@@ -7,6 +7,8 @@ from azure.ai.vision.imageanalysis import ImageAnalysisClient
 from azure.ai.vision.imageanalysis.models import VisualFeatures
 from azure.core.credentials import AzureKeyCredential
 from openai import AzureOpenAI
+from azure.core.credentials import AzureKeyCredential
+import azure.cognitiveservices.speech as speech_rec
 
 
 def Image_Analyze():
@@ -25,6 +27,8 @@ def Image_Analyze():
         if len(sys.argv)>1:
             image_file = sys.argv[1]
         
+        print(image_file)
+
         with open(image_file, "rb") as f:
             image_data = f.read()
 
@@ -60,8 +64,10 @@ def storywrite(topic):
     azure_oai_key = os.getenv("AZURE_OAI_KEY")
     azure_oai_deployment = os.getenv("AZURE_OAI_DEPLOYMENT")
 
-    genre = input("What should be the genre of the story ?\n")        
-        
+    genre = input("\nWhat should be the genre of the story ?\n")    
+
+    voice_enable = input("\nDo you want to narrate the story(y/n) ?\n")    
+       
     client = AzureOpenAI(
         azure_endpoint = azure_oai_endpoint, 
         api_key=azure_oai_key,  
@@ -97,13 +103,39 @@ def storywrite(topic):
                     # Print the response
                     if generated_text is not None:
                         print( generated_text +"."+ "\n")
-                        break
+                        if voice_enable.lower() == "y":
+                            narrate(generated_text)
+                            break
+                        elif voice_enable.lower() == "n":
+                             print("\n")
+                             break
+                        else:
+                             print("Invalid Response Please type y or n...")
+                             break     
+
+                        
                     else:
                          break    
     except Exception as ex:
             print(ex)
 
+def narrate(text):
+    
+   
+    ai_key = os.getenv('SPEECH_KEY')
+    ai_region = os.getenv('SPEECH_REGION')
+    speech_config = speech_rec.SpeechConfig(ai_key, ai_region)
 
+    #Choosing Voice for output and Creating Speech Synthesizer for spoken Output
+    speech_config.speech_synthesis_voice_name = "en-GB-RyanNeural"
+    speech_synthesizer = speech_rec.SpeechSynthesizer(speech_config)
+    
+    #Calling Function To Generate Output Audio
+    speak = speech_synthesizer.speak_text_async(text).get()
+    if speak.reason != speech_rec.ResultReason.SynthesizingAudioCompleted:
+        print(speak.reason)
+    else:
+        print(speak)
 
 def main():
     Image_Analyze()
